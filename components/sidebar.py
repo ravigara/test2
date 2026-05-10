@@ -92,7 +92,7 @@ def render_sidebar():
         # ── API Key Status ─────────────────────────────────────────────────────
         st.divider()
         try:
-            from utils.openai_client import get_robust_client
+            from utils.gemini_client import get_robust_client
             c = get_robust_client()
             total     = c.total_keys
             current   = c.active_key_number

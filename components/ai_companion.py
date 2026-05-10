@@ -8,7 +8,7 @@ import os
 import json
 import logging
 from dotenv import load_dotenv
-from utils.openai_client import get_robust_client
+from utils.gemini_client import get_robust_client
 
 from utils.constants import (
     CHECKIN_SYSTEM_PROMPT, CHECKIN_USER_PROMPT,
@@ -20,7 +20,7 @@ from utils.constants import (
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-MODEL = "gpt-4o-mini"
+MODEL = "gemini-2.5-flash"
 
 
 def get_checkin_response(context: dict) -> str:
@@ -28,20 +28,20 @@ def get_checkin_response(context: dict) -> str:
     user_msg = CHECKIN_USER_PROMPT.format(**context)
     try:
         client = get_robust_client()
-        response = client.chat_completion(
+        response = client.generate_content(
             model=MODEL,
-            messages=[
-                {"role": "system", "content": CHECKIN_SYSTEM_PROMPT},
-                {"role": "user",   "content": user_msg},
-            ],
-            max_tokens=300,
-            temperature=0.85,
+            contents=user_msg,
+            config={
+                "system_instruction": CHECKIN_SYSTEM_PROMPT,
+                "temperature": 0.85,
+                "max_output_tokens": 300,
+            }
         )
-        return response.choices[0].message.content.strip()
+        return response.text.strip()
     except EnvironmentError:
         raise
     except Exception as e:
-        logger.error(f"OpenAI check-in call failed: {e}")
+        logger.error(f"Gemini check-in call failed: {e}")
         return (
             "I'm here with you. 💙 It sounds like today has been a journey. "
             "Whatever you're feeling right now is completely valid. "
@@ -54,19 +54,19 @@ def get_checkin_response_stream(context: dict):
     user_msg = CHECKIN_USER_PROMPT.format(**context)
     try:
         client = get_robust_client()
-        yield from client.chat_stream(
+        yield from client.generate_content_stream(
             model=MODEL,
-            messages=[
-                {"role": "system", "content": CHECKIN_SYSTEM_PROMPT},
-                {"role": "user",   "content": user_msg},
-            ],
-            max_tokens=300,
-            temperature=0.85,
+            contents=user_msg,
+            config={
+                "system_instruction": CHECKIN_SYSTEM_PROMPT,
+                "temperature": 0.85,
+                "max_output_tokens": 300,
+            }
         )
     except EnvironmentError as e:
         raise
     except Exception as e:
-        logger.error(f"OpenAI stream failed: {e}")
+        logger.error(f"Gemini stream failed: {e}")
         yield (
             "I'm here with you. 💙 Whatever you're feeling right now is valid. "
             "What would help you most right now?"
@@ -78,17 +78,17 @@ def analyze_journal(journal_text: str, mood: str) -> dict:
     user_msg = JOURNAL_USER_PROMPT.format(journal_text=journal_text, mood_label=mood)
     try:
         client = get_robust_client()
-        response = client.chat_completion(
+        response = client.generate_content(
             model=MODEL,
-            messages=[
-                {"role": "system", "content": JOURNAL_SYSTEM_PROMPT},
-                {"role": "user",   "content": user_msg},
-            ],
-            max_tokens=400,
-            temperature=0.7,
-            response_format={"type": "json_object"},
+            contents=user_msg,
+            config={
+                "system_instruction": JOURNAL_SYSTEM_PROMPT,
+                "temperature": 0.7,
+                "max_output_tokens": 400,
+                "response_mime_type": "application/json"
+            }
         )
-        raw = response.choices[0].message.content.strip()
+        raw = response.text.strip()
         return json.loads(raw)
     except json.JSONDecodeError as e:
         logger.error(f"JSON parse error in journal analysis: {e}")
@@ -100,7 +100,7 @@ def analyze_journal(journal_text: str, mood: str) -> dict:
     except EnvironmentError:
         raise
     except Exception as e:
-        logger.error(f"OpenAI journal analysis failed: {e}")
+        logger.error(f"Gemini journal analysis failed: {e}")
         return {
             "sentiment": "neutral",
             "themes": [],
@@ -113,16 +113,16 @@ def get_wellness_suggestions(context: dict) -> list[dict]:
     user_msg = WELLNESS_USER_PROMPT.format(**context)
     try:
         client = get_robust_client()
-        response = client.chat_completion(
+        response = client.generate_content(
             model=MODEL,
-            messages=[
-                {"role": "system", "content": WELLNESS_SYSTEM_PROMPT},
-                {"role": "user",   "content": user_msg},
-            ],
-            max_tokens=600,
-            temperature=0.8,
+            contents=user_msg,
+            config={
+                "system_instruction": WELLNESS_SYSTEM_PROMPT,
+                "temperature": 0.8,
+                "max_output_tokens": 600,
+            }
         )
-        raw = response.choices[0].message.content.strip()
+        raw = response.text.strip()
         if raw.startswith("```"):
             lines = raw.split("\n")
             raw = "\n".join(lines[1:]) if lines[-1].strip() == "```" else "\n".join(lines[1:-1])
@@ -131,7 +131,7 @@ def get_wellness_suggestions(context: dict) -> list[dict]:
             return result
         return result.get("suggestions", [])
     except Exception as e:
-        logger.error(f"OpenAI wellness suggestions failed: {e}")
+        logger.error(f"Gemini wellness suggestions failed: {e}")
         return [
             {
                 "category": "breathing",
@@ -159,19 +159,19 @@ def get_journal_prompt(emotion: str) -> str:
     system = JOURNAL_WRITING_PROMPT_SYSTEM.format(detected_mood=emotion)
     try:
         client = get_robust_client()
-        response = client.chat_completion(
+        response = client.generate_content(
             model=MODEL,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user",   "content": "Generate the journaling prompt."},
-            ],
-            max_tokens=60,
-            temperature=0.9,
+            contents="Generate the journaling prompt.",
+            config={
+                "system_instruction": system,
+                "temperature": 0.9,
+                "max_output_tokens": 60,
+            }
         )
-        return response.choices[0].message.content.strip()
+        return response.text.strip()
     except EnvironmentError:
         raise
     except Exception as e:
-        logger.error(f"OpenAI journal prompt failed: {e}")
+        logger.error(f"Gemini journal prompt failed: {e}")
         from utils.constants import JOURNAL_PROMPTS
         return JOURNAL_PROMPTS.get(emotion, JOURNAL_PROMPTS["neutral"])

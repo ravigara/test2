@@ -1,10 +1,10 @@
 """
-Orchestrates the AI Chatbot interaction, utilizing OpenAI's API with automatic key fallback.
+Orchestrates the AI Chatbot interaction, utilizing Google Gemini with automatic key fallback.
 """
 
 from dotenv import load_dotenv
 from ai.mood_adapter import get_mood_adaptation
-from utils.openai_client import get_robust_client
+from utils.gemini_client import get_robust_client
 
 load_dotenv()
 
@@ -17,18 +17,28 @@ def generate_chat_response_stream(messages: list, current_mood: str):
     robust_client = get_robust_client()
 
     system_prompt = get_mood_adaptation(current_mood)
-    api_messages = [{"role": "system", "content": system_prompt}]
-
+    
+    # Convert messages from {"role": "user"/"assistant", "content": "..."}
+    # to Gemini format {"role": "user"/"model", "parts": [{"text": "..."}]}
+    gemini_messages = []
     # Keep last 10 messages for context
     for msg in messages[-10:]:
-        api_messages.append(msg)
+        role = "model" if msg["role"] == "assistant" else "user"
+        gemini_messages.append(
+            {"role": role, "parts": [{"text": msg["content"]}]}
+        )
+
+    config = {
+        "temperature": 0.75,
+        "max_output_tokens": 300,
+        "system_instruction": system_prompt
+    }
 
     try:
-        yield from robust_client.chat_stream(
-            model="gpt-4o-mini",
-            messages=api_messages,
-            temperature=0.75,
-            max_tokens=300,
+        yield from robust_client.generate_content_stream(
+            model="gemini-2.5-flash",
+            contents=gemini_messages,
+            config=config,
         )
     except EnvironmentError as e:
         yield f"⚠️ All API keys are exhausted. Please check your quota. ({e})"
