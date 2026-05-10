@@ -92,11 +92,13 @@ st.caption("Take a selfie and let Mitra detect your expression. Your image is ne
 
 camera_col, tip_col = st.columns([2, 1])
 with camera_col:
-    st.markdown("**Use your default camera for live expression detection.**")
-    from components.mood_capture import live_camera_streamlit
-    live_res = live_camera_streamlit()
-    if live_res.get("confidence", 0) > 0:
-        st.session_state.live_result = live_res
+    st.markdown("**Use your camera to capture your expression.**")
+    picture = st.camera_input("Take a photo", label_visibility="collapsed")
+    if picture:
+        from components.mood_capture import capture_and_detect
+        live_res = capture_and_detect(picture)
+        if live_res.get("confidence", 0) > 0:
+            st.session_state.live_result = live_res
 
 with tip_col:
     st.markdown("""
