@@ -51,6 +51,8 @@ def show_emergency_panel():
 def get_high_risk_response() -> str:
     return (
         "I'm really sorry you're feeling this way. You deserve support and care. "
-        "Please consider contacting someone you trust or a mental health professional right now. "
-        "I have locked the chat temporarily to focus on your immediate safety."
+        "Please consider reaching out to a professional right now:\n\n"
+        "📞 **Tele-MANAS Mental Health Helpline:** 14416 or 1-800-891-4416 (24/7)\n\n"
+        "📞 **AASRA Suicide Prevention Helpline:** +91 9820466726 (24/7)\n\n"
+        "You are not alone. I have paused the chat temporarily to focus on your immediate safety. 💙"
     )

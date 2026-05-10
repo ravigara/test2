@@ -13,20 +13,31 @@ from pathlib import Path
 
 def _get_db_path() -> Path:
     """
-    Returns a persistent local database path when running on Windows (laptop),
-    or a session-isolated temporary database path when running on Linux (Streamlit Cloud).
-    This ensures multiple users online don't see each other's data.
+    Returns a database path scoped to the current user session.
+    - Windows local dev: persistent file at data/mitra.db (single-user assumed).
+    - Streamlit Cloud (Linux): each browser session gets its own isolated DB
+      using a UUID stored in st.session_state, so multiple users never collide.
     """
     if os.name == 'nt':
         return Path(__file__).parent.parent / "data" / "mitra.db"
-    
+
+    # On Streamlit Cloud, derive a stable per-session ID.
+    # st.session_state persists for the lifetime of a single browser tab.
     try:
-        from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx
-        ctx = get_script_run_ctx()
-        session_id = ctx.session_id if ctx else "default"
-    except ImportError:
-        session_id = "default"
-        
+        import streamlit as st
+        if "_db_session_id" not in st.session_state:
+            import uuid
+            st.session_state["_db_session_id"] = uuid.uuid4().hex
+        session_id = st.session_state["_db_session_id"]
+    except Exception:
+        # Fallback: try the old scriptrunner context
+        try:
+            from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx
+            ctx = get_script_run_ctx()
+            session_id = ctx.session_id if ctx else "default"
+        except ImportError:
+            session_id = "default"
+
     return Path(tempfile.gettempdir()) / f"mitra_{session_id}.db"
 
 

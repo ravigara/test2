@@ -250,7 +250,8 @@ tod = get_time_of_day()
 st.markdown(f"""
 <div class="hero-banner {tod}">
     <h1>{greeting}</h1>
-    /div>
+    <p>Your private mental wellness space. No judgment, no tracking, just you.</p>
+</div>
 """, unsafe_allow_html=True)
 
 # ── Stats Row ──────────────────────────────────────────────────────────────────
