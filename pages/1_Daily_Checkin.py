@@ -54,8 +54,8 @@ st.markdown("""
     font-size: 7rem;
     opacity: 0.06;
 }
-.page-header h2 { margin: 0 0 6px 0; color: #f0f4ff !important; font-size: 1.9rem; }
-.page-header p  { margin: 0; color: #64748b !important; font-size: 0.9rem; }
+.page-header h2 { margin: 0 0 6px 0; color: #1e293b !important; font-size: 1.9rem; }
+.page-header p  { margin: 0; color: #475569 !important; font-size: 0.9rem; }
 </style>
 """, unsafe_allow_html=True)
 

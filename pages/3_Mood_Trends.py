@@ -47,8 +47,8 @@ st.markdown("""
     transform: translateY(-50%);
     font-size: 7rem; opacity: 0.06;
 }
-.trends-header h2 { margin: 0 0 4px 0; color: #f0f4ff !important; }
-.trends-header p  { margin: 0; color: #64748b !important; font-size: 0.88rem; }
+.trends-header h2 { margin: 0 0 4px 0; color: #1e293b !important; }
+.trends-header p  { margin: 0; color: #475569 !important; font-size: 0.88rem; }
 </style>
 """, unsafe_allow_html=True)
 

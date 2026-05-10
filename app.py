@@ -64,11 +64,11 @@ st.markdown("""
 .hero-banner h1 {
     margin: 0 0 8px 0;
     font-size: 2.2rem;
-    color: #f0f4ff !important;
+    color: #1e293b !important;
 }
 .hero-banner p {
     margin: 0;
-    color: #93c5fd !important;
+    color: #334155 !important;
     font-size: 1rem;
     opacity: 0.9;
 }
@@ -103,12 +103,12 @@ st.markdown("""
 .feature-card .card-title {
     font-size: 1.1rem;
     font-weight: 700;
-    color: #f0f4ff;
+    color: #1e293b;
     margin-bottom: 6px;
 }
 .feature-card .card-desc {
     font-size: 0.85rem;
-    color: #64748b;
+    color: #475569;
     line-height: 1.5;
 }
 .feature-card .card-glow {
@@ -129,9 +129,9 @@ st.markdown("""
     padding: 28px 32px;
     margin-bottom: 24px;
 }
-.consent-card h3 { color: #93c5fd !important; margin-top: 0; }
-.consent-card ul { color: #94a3b8 !important; }
-.consent-card strong { color: #cbd5e0 !important; }
+.consent-card h3 { color: #1e293b !important; margin-top: 0; }
+.consent-card ul { color: #475569 !important; }
+.consent-card strong { color: #1e293b !important; }
 
 /* Quote footer */
 .quote-footer {
@@ -153,7 +153,7 @@ if not get_user_profile("consent_given"):
     st.markdown("""
     <div class="consent-card">
         <h3>👋 Welcome to Mitra!</h3>
-        <p style="color:#94a3b8;"><strong style="color:#cbd5e0;">Before you begin, here's what you should know:</strong></p>
+        <p style="color:#475569;"><strong style="color:#1e293b;">Before you begin, here's what you should know:</strong></p>
         <ul>
             <li>📷 <strong>Facial images</strong> are processed in memory only — never stored or transmitted</li>
             <li>📝 <strong>Journal entries</strong> are saved on this device only</li>

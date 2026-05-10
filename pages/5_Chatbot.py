@@ -49,11 +49,11 @@ st.markdown("""
 .chat-header h2 {
     margin: 0 0 4px 0;
     font-size: 1.8rem;
-    color: #f0f4ff !important;
+    color: #1e293b !important;
 }
 .chat-header p {
     margin: 0;
-    color: #8892a4 !important;
+    color: #475569 !important;
     font-size: 0.9rem;
 }
 .mood-badge {
@@ -65,7 +65,7 @@ st.markdown("""
     border-radius: 30px;
     padding: 8px 18px;
     font-size: 0.88rem;
-    color: #93c5fd;
+    color: #1e3a8a;
     margin-bottom: 20px;
     font-weight: 500;
     animation: float 3s ease-in-out infinite;
@@ -76,7 +76,7 @@ st.markdown("""
     border-radius: 10px;
     padding: 10px 16px;
     font-size: 0.82rem;
-    color: #fde68a;
+    color: #92400e;
     margin-bottom: 20px;
     text-align: center;
 }
