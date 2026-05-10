@@ -164,6 +164,8 @@ if submitted and journal_text.strip():
         "sentiment": sentiment,
         "themes": themes,
         "ai_reflection": reflection,
+        "risk_score": risk_info["risk_score"],
+        "risk_level": risk_info["risk_level"]
     })
     st.success("✅ Journal entry saved privately on your device.")
 

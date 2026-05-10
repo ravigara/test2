@@ -5,18 +5,22 @@ Orchestrates the AI Chatbot interaction, utilizing Google Gemini with automatic 
 from dotenv import load_dotenv
 from ai.mood_adapter import get_mood_adaptation
 from utils.gemini_client import get_robust_client
+from ai.safety_prompt_manager import get_safety_instruction
 
 load_dotenv()
 
 
-def generate_chat_response_stream(messages: list, current_mood: str):
+def generate_chat_response_stream(messages: list, current_mood: str, risk_level: str = "Normal"):
     """
     Generator that streams the chatbot response.
     Automatically falls back to the next API key if quota is exhausted.
     """
     robust_client = get_robust_client()
 
-    system_prompt = get_mood_adaptation(current_mood)
+    base_mood_prompt = get_mood_adaptation(current_mood)
+    safety_prompt = get_safety_instruction(risk_level)
+    
+    system_prompt = f"{safety_prompt}\n\n[MOOD CONTEXT]\n{base_mood_prompt}"
     
     # Convert messages from {"role": "user"/"assistant", "content": "..."}
     # to Gemini format {"role": "user"/"model", "parts": [{"text": "..."}]}
@@ -30,7 +34,7 @@ def generate_chat_response_stream(messages: list, current_mood: str):
 
     config = {
         "temperature": 0.75,
-        "max_output_tokens": 300,
+        "max_output_tokens": 1500,
         "system_instruction": system_prompt
     }
 

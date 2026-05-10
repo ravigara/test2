@@ -233,6 +233,40 @@ if not df_journals.empty and "sentiment" in df_journals.columns:
 else:
     st.info("📝 No journal entries yet. Start journaling to see sentiment trends.")
 
+# ── Chart 5: Emotional Risk Trends (Crisis Detection) ─────────────────────────
+st.markdown("### 🛡️ Emotional Risk Trends")
+if not df_checkins.empty and "risk_score" in df_checkins.columns and df_checkins["risk_score"].sum() > 0:
+    df_risk = df_checkins.sort_values("date")
+    fig_risk = go.Figure()
+    
+    # Add severity bands
+    fig_risk.add_hrect(y0=61, y1=100, fillcolor="#ef4444", opacity=0.1, line_width=0, annotation_text="High Risk")
+    fig_risk.add_hrect(y0=31, y1=60, fillcolor="#f97316", opacity=0.1, line_width=0, annotation_text="Moderate")
+    fig_risk.add_hrect(y0=0, y1=30, fillcolor="#4CAF82", opacity=0.1, line_width=0, annotation_text="Normal")
+
+    fig_risk.add_trace(go.Scatter(
+        x=df_risk["date"],
+        y=df_risk["risk_score"],
+        mode="lines+markers",
+        line=dict(color="#ef4444", width=3, shape="spline"),
+        marker=dict(size=8, color="#ef4444"),
+    ))
+
+    fig_risk.update_layout(
+        height=300,
+        yaxis=dict(range=[0, 100], title="Risk Score", gridcolor="rgba(255,255,255,0.06)", color="#94a3b8"),
+        xaxis=dict(title="Date", gridcolor="rgba(255,255,255,0.06)", color="#94a3b8"),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=10, r=60, t=10, b=10),
+        showlegend=False,
+        font=dict(color="#94a3b8"),
+    )
+    st.plotly_chart(fig_risk, use_container_width=True)
+else:
+    st.info("🛡️ No risk data detected yet.")
+
+
 # ── Recent Check-ins Table ─────────────────────────────────────────────────────
 st.markdown("### 📋 Recent Check-ins")
 with st.expander("View last 10 entries"):

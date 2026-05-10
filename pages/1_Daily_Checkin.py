@@ -267,6 +267,8 @@ if submit or st.session_state.checkin_done:
             "energy_level": energy_level,
             "notes": notes,
             "ai_response": response_text,
+            "risk_score": risk_info["risk_score"] if "risk_info" in locals() else 0,
+            "risk_level": risk_info["risk_level"] if "risk_info" in locals() else "Normal"
         })
         st.session_state.checkin_done = True
         st.session_state.last_ai_response = response_text

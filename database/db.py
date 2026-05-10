@@ -49,7 +49,9 @@ def _get_connection() -> sqlite3.Connection:
                 stress_level    TEXT,
                 energy_level    TEXT,
                 notes           TEXT,
-                ai_response     TEXT
+                ai_response     TEXT,
+                risk_score      INTEGER DEFAULT 0,
+                risk_level      TEXT DEFAULT 'Normal'
             );
             CREATE TABLE IF NOT EXISTS journal_entries (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,7 +60,9 @@ def _get_connection() -> sqlite3.Connection:
                 content         TEXT,
                 sentiment       TEXT,
                 themes          TEXT,
-                ai_reflection   TEXT
+                ai_reflection   TEXT,
+                risk_score      INTEGER DEFAULT 0,
+                risk_level      TEXT DEFAULT 'Normal'
             );
             CREATE TABLE IF NOT EXISTS wellness_suggestions (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,9 +77,17 @@ def _get_connection() -> sqlite3.Connection:
             );
         """)
         conn.commit()
-    
+    try:
+        cursor = conn.cursor()
+        cursor.execute("ALTER TABLE checkins ADD COLUMN risk_score INTEGER DEFAULT 0")
+        cursor.execute("ALTER TABLE checkins ADD COLUMN risk_level TEXT DEFAULT 'Normal'")
+        cursor.execute("ALTER TABLE journal_entries ADD COLUMN risk_score INTEGER DEFAULT 0")
+        cursor.execute("ALTER TABLE journal_entries ADD COLUMN risk_level TEXT DEFAULT 'Normal'")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass # Columns likely already exist
+        
     return conn
-
 
 def init_db():
     """Create all tables if they do not exist."""
@@ -128,9 +140,9 @@ def save_checkin(data: dict) -> int:
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO checkins (date, detected_mood, self_mood, mood_score,
-                              stress_level, energy_level, notes, ai_response)
+                              stress_level, energy_level, notes, ai_response, risk_score, risk_level)
         VALUES (:date, :detected_mood, :self_mood, :mood_score,
-                :stress_level, :energy_level, :notes, :ai_response)
+                :stress_level, :energy_level, :notes, :ai_response, :risk_score, :risk_level)
     """, data)
     row_id = cursor.lastrowid
     conn.commit()
@@ -145,8 +157,8 @@ def save_journal(data: dict) -> int:
         data = dict(data)
         data["themes"] = json.dumps(data["themes"])
     cursor.execute("""
-        INSERT INTO journal_entries (date, content, sentiment, themes, ai_reflection)
-        VALUES (:date, :content, :sentiment, :themes, :ai_reflection)
+        INSERT INTO journal_entries (date, content, sentiment, themes, ai_reflection, risk_score, risk_level)
+        VALUES (:date, :content, :sentiment, :themes, :ai_reflection, :risk_score, :risk_level)
     """, data)
     row_id = cursor.lastrowid
     conn.commit()

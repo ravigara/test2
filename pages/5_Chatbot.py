@@ -106,6 +106,12 @@ st.markdown(
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "consecutive_distress" not in st.session_state:
+    st.session_state.consecutive_distress = 0
+
+if "current_risk_level" not in st.session_state:
+    st.session_state.current_risk_level = "Normal"
+
 if "chat_initialized" not in st.session_state:
     # Greet based on mood
     greet_map = {
@@ -129,6 +135,21 @@ try:
     st.markdown(status_html, unsafe_allow_html=True)
 except Exception:
     pass
+
+# ── Risk Status Indicator ──────────────────────────────────────────────────────
+if st.session_state.current_risk_level != "Normal":
+    level_colors = {
+        "Mild Concern": "#f59e0b",
+        "Moderate Concern": "#f97316",
+        "High Risk": "#ef4444"
+    }
+    rc = level_colors.get(st.session_state.current_risk_level, "#3b82f6")
+    st.markdown(
+        f'<div style="background:{rc}22; border:1px solid {rc}; padding:10px 16px; border-radius:10px; margin-bottom:16px; color:{rc}; font-size:0.85rem; font-weight:600;">'
+        f'🛡️ System Status: {st.session_state.current_risk_level} detected. Behavior adapting for safety.'
+        f'</div>',
+        unsafe_allow_html=True
+    )
 
 # ── Display Chat History ───────────────────────────────────────────────────────
 for message in st.session_state.messages:
@@ -154,7 +175,19 @@ if prompt := st.chat_input("Talk to Mitra..."):
         st.markdown(prompt)
 
     # Crisis pipeline check
-    risk_info = calculate_risk(prompt, detected_mood=current_mood)
+    risk_info = calculate_risk(
+        prompt, 
+        detected_mood=current_mood, 
+        consecutive_distress=st.session_state.consecutive_distress
+    )
+    
+    st.session_state.current_risk_level = risk_info["risk_level"]
+    
+    # Pattern tracking
+    if risk_info["risk_score"] > 30:
+        st.session_state.consecutive_distress += 1
+    else:
+        st.session_state.consecutive_distress = max(0, st.session_state.consecutive_distress - 1)
 
     if risk_info["risk_level"] == "High Risk":
         st.session_state.emergency_lock = True
@@ -170,7 +203,7 @@ if prompt := st.chat_input("Talk to Mitra..."):
         full_response = ""
 
         try:
-            for chunk in generate_chat_response_stream(st.session_state.messages, current_mood):
+            for chunk in generate_chat_response_stream(st.session_state.messages, current_mood, risk_info["risk_level"]):
                 full_response += chunk
                 response_placeholder.markdown(full_response + " ▌")
 
