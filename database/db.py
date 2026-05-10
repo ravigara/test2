@@ -6,16 +6,74 @@ All CRUD operations for checkins, journals, suggestions, and user profile.
 import sqlite3
 import json
 import os
+import tempfile
 from datetime import datetime, date, timedelta
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent.parent / "data" / "mitra.db"
+def _get_db_path() -> Path:
+    """
+    Returns a persistent local database path when running on Windows (laptop),
+    or a session-isolated temporary database path when running on Linux (Streamlit Cloud).
+    This ensures multiple users online don't see each other's data.
+    """
+    if os.name == 'nt':
+        return Path(__file__).parent.parent / "data" / "mitra.db"
+    
+    try:
+        from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx
+        ctx = get_script_run_ctx()
+        session_id = ctx.session_id if ctx else "default"
+    except ImportError:
+        session_id = "default"
+        
+    return Path(tempfile.gettempdir()) / f"mitra_{session_id}.db"
 
 
 def _get_connection() -> sqlite3.Connection:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+    db_path = _get_db_path()
+    is_new = not db_path.exists()
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(db_path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    
+    if is_new:
+        cursor = conn.cursor()
+        cursor.executescript("""
+            CREATE TABLE IF NOT EXISTS checkins (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp       DATETIME DEFAULT CURRENT_TIMESTAMP,
+                date            DATE,
+                detected_mood   TEXT,
+                self_mood       TEXT,
+                mood_score      INTEGER,
+                stress_level    TEXT,
+                energy_level    TEXT,
+                notes           TEXT,
+                ai_response     TEXT
+            );
+            CREATE TABLE IF NOT EXISTS journal_entries (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp       DATETIME DEFAULT CURRENT_TIMESTAMP,
+                date            DATE,
+                content         TEXT,
+                sentiment       TEXT,
+                themes          TEXT,
+                ai_reflection   TEXT
+            );
+            CREATE TABLE IF NOT EXISTS wellness_suggestions (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                date            DATE,
+                trigger_mood    TEXT,
+                suggestions     TEXT,
+                category        TEXT
+            );
+            CREATE TABLE IF NOT EXISTS user_profile (
+                key             TEXT PRIMARY KEY,
+                value           TEXT
+            );
+        """)
+        conn.commit()
+    
     return conn
 
 
