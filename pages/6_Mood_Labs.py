@@ -1,14 +1,23 @@
 import streamlit as st
 import numpy as np
-import cv2
 import pandas as pd
-import joblib
 import altair as alt
-from tensorflow.keras.models import load_model, model_from_json
-from tensorflow.keras.preprocessing.image import img_to_array
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, RTCConfiguration, WebRtcMode
 from pathlib import Path
 from PIL import Image
+
+# Lazy loading of heavy libraries prevents Streamlit Cloud SegFaults
+def get_cv2():
+    import cv2
+    return cv2
+
+def get_tf_keras():
+    from tensorflow.keras.models import load_model, model_from_json
+    from tensorflow.keras.preprocessing.image import img_to_array
+    return load_model, model_from_json, img_to_array
+
+def get_webrtc():
+    from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, RTCConfiguration, WebRtcMode
+    return webrtc_streamer, VideoTransformerBase, RTCConfiguration, WebRtcMode
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -41,6 +50,9 @@ with tab1:
     
     if img_file is not None:
         try:
+            cv2 = get_cv2()
+            load_model, _, img_to_array = get_tf_keras()
+            
             # Load models locally within the try block to avoid global errors if missing
             face_classifier = cv2.CascadeClassifier(str(MODELS_DIR / "Emotion_Dectector/haarcascade_frontalface_default.xml"))
             img_classifier = load_model(str(MODELS_DIR / "Emotion_Dectector/model.h5"), compile=False)
@@ -87,6 +99,7 @@ with tab2:
     
     @st.cache_resource
     def load_nlp_model():
+        import joblib
         model_path = MODELS_DIR / "NLP-Text-Emotion/models/emotion_classifier_pipe_lr_03_jan_2022.pkl"
         return joblib.load(model_path)
         
@@ -129,6 +142,10 @@ with tab2:
 with tab3:
     st.header("Live Webcam Emotion Detection")
     st.write("Allow camera access to analyze your facial expressions in real-time.")
+    
+    webrtc_streamer, VideoTransformerBase, RTCConfiguration, WebRtcMode = get_webrtc()
+    cv2 = get_cv2()
+    _, model_from_json, img_to_array = get_tf_keras()
     
     RTC_CONFIGURATION = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
     
