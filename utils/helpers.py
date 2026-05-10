@@ -2,6 +2,7 @@
 Helper utilities: date/time, greeting, streak formatting, user name.
 """
 
+from typing import Union
 from datetime import datetime, date
 from database.db import get_user_profile, get_streak
 
@@ -57,7 +58,7 @@ def format_streak(streak: int) -> str:
         return f"🔥 {streak}-day streak! You're a wellness champion! 💙"
 
 
-def format_date(d: str | date) -> str:
+def format_date(d: Union[str, date]) -> str:
     """Return a human-readable date string."""
     if isinstance(d, str):
         try:

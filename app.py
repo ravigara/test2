@@ -1,8 +1,3 @@
-"""
-Mitra — Your Private Mental Wellness Companion
-Main Streamlit entrypoint: Unified Onboarding & Dashboard.
-"""
-
 import streamlit as st
 from database.db import (
     init_db, get_today_checkin, get_total_checkins,
@@ -255,8 +250,7 @@ tod = get_time_of_day()
 st.markdown(f"""
 <div class="hero-banner {tod}">
     <h1>{greeting}</h1>
-    <p>Your private mental wellness space. No judgment, no tracking, just you.</p>
-</div>
+    /div>
 """, unsafe_allow_html=True)
 
 # ── Stats Row ──────────────────────────────────────────────────────────────────

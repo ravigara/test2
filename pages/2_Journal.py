@@ -32,8 +32,8 @@ except FileNotFoundError:
 if "journal_start_time" not in st.session_state:
     st.session_state.journal_start_time = time.time()
 
-if "voice_transcript" not in st.session_state:
-    st.session_state.voice_transcript = ""
+if "journal_text_area" not in st.session_state:
+    st.session_state.journal_text_area = ""
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown("## 📝 Your Private Journal")
@@ -73,7 +73,7 @@ if audio_bytes and st.button("Transcribe Audio to Text", type="secondary"):
             ]
             response = client.generate_content("gemini-1.5-flash", contents)
             if response.text:
-                st.session_state.voice_transcript += " " + response.text.strip()
+                st.session_state.journal_text_area += (" " if st.session_state.journal_text_area else "") + response.text.strip()
                 st.success("Transcription complete!")
         except Exception as e:
             st.error(f"Failed to transcribe: {e}")
@@ -82,7 +82,6 @@ if audio_bytes and st.button("Transcribe Audio to Text", type="secondary"):
 st.markdown("### 📖 Write Your Entry")
 journal_text = st.text_area(
     "Share whatever is on your mind...",
-    value=st.session_state.voice_transcript.strip(),
     placeholder="Start writing or use the Voice Journal above...",
     height=280,
     key="journal_text_area",
@@ -190,7 +189,7 @@ if submitted and journal_text.strip():
     
     # Reset tracking
     st.session_state.journal_start_time = time.time()
-    st.session_state.voice_transcript = ""
+    st.session_state.journal_text_area = ""
     st.success("✅ Journal entry saved privately on your device.")
     st.rerun()
 

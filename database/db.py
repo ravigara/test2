@@ -7,6 +7,7 @@ import sqlite3
 import json
 import os
 import tempfile
+from typing import Optional
 from datetime import datetime, date, timedelta
 from pathlib import Path
 
@@ -83,6 +84,7 @@ def _get_connection() -> sqlite3.Connection:
         cursor.execute("ALTER TABLE checkins ADD COLUMN risk_level TEXT DEFAULT 'Normal'")
         cursor.execute("ALTER TABLE journal_entries ADD COLUMN risk_score INTEGER DEFAULT 0")
         cursor.execute("ALTER TABLE journal_entries ADD COLUMN risk_level TEXT DEFAULT 'Normal'")
+        conn.commit()
     except sqlite3.OperationalError:
         pass # Columns likely already exist
         
@@ -269,7 +271,7 @@ def set_user_profile(key: str, value: str):
     conn.close()
 
 
-def get_today_checkin() -> dict | None:
+def get_today_checkin() -> Optional[dict]:
     conn = _get_connection()
     cursor = conn.cursor()
     today = date.today().isoformat()
