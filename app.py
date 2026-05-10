@@ -204,7 +204,7 @@ if not get_user_profile("consent_given"):
         except Exception:
             return ""
             
-    mascot_b64 = get_image_base64("assets/robot_mascot.png")
+    mascot_b64 = get_image_base64("assets/homepage.png")
     
     st.markdown(f"""
     <div class="onboarding-container">
