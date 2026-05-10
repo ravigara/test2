@@ -131,18 +131,16 @@ st.markdown("""
     -webkit-text-fill-color: transparent;
     margin-bottom: 10px;
 }
-.floating-orb {
-    width: 100px;
-    height: 100px;
-    background: radial-gradient(circle, #8B5CF6 0%, #E0E7FF 100%);
-    border-radius: 50%;
-    margin: 0 auto 30px auto;
-    box-shadow: 0 0 40px rgba(139, 92, 246, 0.4);
-    animation: float-orb 6s ease-in-out infinite;
+.robot-mascot {
+    height: 140px;
+    margin: 0 auto 24px auto;
+    display: block;
+    animation: float-orb 4s ease-in-out infinite;
+    filter: drop-shadow(0 10px 20px rgba(139, 92, 246, 0.2));
 }
 @keyframes float-orb {
     0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-15px) scale(1.05); box-shadow: 0 0 60px rgba(139, 92, 246, 0.6); }
+    50% { transform: translateY(-10px) scale(1.02); filter: drop-shadow(0 15px 25px rgba(139, 92, 246, 0.3)); }
 }
 .trust-badge {
     display: inline-flex;
@@ -198,10 +196,20 @@ def get_daily_quote():
 
 # ── Onboarding / Login View ────────────────────────────────────────────────────
 if not get_user_profile("consent_given"):
-    st.markdown("""
+    import base64
+    def get_image_base64(path):
+        try:
+            with open(path, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode()
+        except Exception:
+            return ""
+            
+    mascot_b64 = get_image_base64("assets/robot_mascot.png")
+    
+    st.markdown(f"""
     <div class="onboarding-container">
         <div class="trust-badge">🔒 100% Private & Device-Local Storage</div>
-        <div class="floating-orb"></div>
+        <img src="data:image/png;base64,{mascot_b64}" class="robot-mascot" alt="Mitra Mascot">
         <h1 class="onboarding-title">Welcome to Mitra</h1>
         <p style="color: #475569; margin-bottom:30px;">Your safe, intelligent space for emotional check-ins.</p>
     </div>
