@@ -1,15 +1,17 @@
 """
 Page 2 — Daily Journal
-Free-form journaling with AI reflection and sentiment analysis.
+Free-form journaling with voice-to-text, AI reflection, and session metrics.
 """
 
 import streamlit as st
 from datetime import date
+import time
 
-from database.db import save_journal, get_journals, get_today_checkin
-from components.ai_companion import analyze_journal, get_journal_prompt
-from utils.constants import EMOTION_EMOJI, JOURNAL_PROMPTS
+from database.db import save_journal, get_journals, get_today_checkin, get_user_profile
+from components.ai_companion import analyze_journal
+from utils.constants import EMOTION_EMOJI
 from utils.helpers import format_date
+from utils.gemini_client import get_robust_client
 
 st.set_page_config(
     page_title="Journal | Mitra",
@@ -25,6 +27,13 @@ try:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 except FileNotFoundError:
     pass
+
+# ── Session Tracking ───────────────────────────────────────────────────────────
+if "journal_start_time" not in st.session_state:
+    st.session_state.journal_start_time = time.time()
+
+if "voice_transcript" not in st.session_state:
+    st.session_state.voice_transcript = ""
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown("## 📝 Your Private Journal")
@@ -48,46 +57,52 @@ if today_checkin:
         """,
         unsafe_allow_html=True,
     )
-else:
-    st.info("💡 You haven't done your daily check-in yet. Complete it first for a personalized prompt!")
 
-# ── AI Writing Prompt ──────────────────────────────────────────────────────────
-st.markdown("### ✨ Today's Writing Prompt")
+# ── Voice to Text ──────────────────────────────────────────────────────────────
+st.markdown("### 🎙️ Voice Journal")
+st.info("Record your thoughts out loud and Mitra will transcribe them into text.")
+audio_bytes = st.audio_input("Record Voice Message")
 
-if "journal_prompt" not in st.session_state:
-    with st.spinner("Generating your personalized prompt..."):
-        st.session_state.journal_prompt = get_journal_prompt(today_mood)
-
-st.markdown(
-    f"""
-    <div style="background:linear-gradient(135deg,#fff9e6,#fff3cc);
-                 border-radius:14px;border-left:4px solid #F5A623;
-                 padding:16px 20px;font-size:1.05rem;font-style:italic;
-                 color:#5a4500;margin-bottom:20px;">
-        💬 {st.session_state.journal_prompt}
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-col_regen, _ = st.columns([1, 3])
-with col_regen:
-    if st.button("🔄 New Prompt", key="regen_prompt_btn"):
-        with st.spinner("Generating..."):
-            st.session_state.journal_prompt = get_journal_prompt(today_mood)
-        st.rerun()
+if audio_bytes and st.button("Transcribe Audio to Text", type="secondary"):
+    with st.spinner("Transcribing your voice..."):
+        try:
+            client = get_robust_client()
+            contents = [
+                "You are an expert transcriber. Transcribe the following audio perfectly. Output ONLY the raw transcription text, no conversational filler.",
+                {"mime_type": "audio/wav", "data": audio_bytes.getvalue()}
+            ]
+            response = client.generate_content("gemini-1.5-flash", contents)
+            if response.text:
+                st.session_state.voice_transcript += " " + response.text.strip()
+                st.success("Transcription complete!")
+        except Exception as e:
+            st.error(f"Failed to transcribe: {e}")
 
 # ── Journal Entry ──────────────────────────────────────────────────────────────
 st.markdown("### 📖 Write Your Entry")
 journal_text = st.text_area(
     "Share whatever is on your mind...",
-    placeholder="Start writing here... There's no right or wrong way to journal.",
+    value=st.session_state.voice_transcript.strip(),
+    placeholder="Start writing or use the Voice Journal above...",
     height=280,
     key="journal_text_area",
 )
 
+# ── Session Metrics ────────────────────────────────────────────────────────────
 word_count = len(journal_text.split()) if journal_text.strip() else 0
-st.caption(f"_{word_count} words_")
+time_elapsed = int(time.time() - st.session_state.journal_start_time)
+mins = time_elapsed // 60
+secs = time_elapsed % 60
+
+# Goal tracking
+goal = int(get_user_profile("journal_goal") or 1)
+past_entries = get_journals(days=0) # Get today's entries
+entries_today = len(past_entries)
+
+col1, col2, col3 = st.columns(3)
+col1.caption(f"📝 Words: {word_count}")
+col2.caption(f"⏱️ Session: {mins}m {secs}s")
+col3.caption(f"🎯 Daily Goal: {entries_today} / {goal}")
 
 submitted = st.button(
     "💙 Save & Reflect",
@@ -98,6 +113,9 @@ submitted = st.button(
 )
 
 if submitted and journal_text.strip():
+    # Record time taken
+    total_time_taken = f"{mins}m {secs}s"
+    
     # Run crisis detection pipeline
     from ai.risk_scoring import calculate_risk
     from ai.emergency_mode import show_emergency_panel
@@ -165,9 +183,16 @@ if submitted and journal_text.strip():
         "themes": themes,
         "ai_reflection": reflection,
         "risk_score": risk_info["risk_score"],
-        "risk_level": risk_info["risk_level"]
+        "risk_level": risk_info["risk_level"],
+        "word_count": word_count,
+        "time_taken": total_time_taken
     })
+    
+    # Reset tracking
+    st.session_state.journal_start_time = time.time()
+    st.session_state.voice_transcript = ""
     st.success("✅ Journal entry saved privately on your device.")
+    st.rerun()
 
 # ── Past Entries ───────────────────────────────────────────────────────────────
 st.markdown("---")
@@ -190,6 +215,9 @@ else:
         themes_str = ", ".join(entry.get("themes") or []) or "—"
         preview = (entry.get("content", "")[:120] + "...") if len(entry.get("content", "")) > 120 else entry.get("content", "")
         date_label = format_date(entry.get("date", ""))
+        
+        words = entry.get("word_count", "N/A")
+        duration = entry.get("time_taken", "N/A")
 
         with st.expander(
             f"📅 {date_label} · {entry.get('sentiment', 'neutral').capitalize()}"
@@ -204,6 +232,6 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
-            st.caption(f"🏷️ Themes: {themes_str}")
+            st.caption(f"🏷️ Themes: {themes_str} | ⏱️ {duration} | 📝 {words} words")
             if entry.get("ai_reflection"):
                 st.markdown(f"*💬 Mitra: {entry['ai_reflection']}*")

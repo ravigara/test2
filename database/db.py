@@ -83,6 +83,13 @@ def _get_connection() -> sqlite3.Connection:
         cursor.execute("ALTER TABLE checkins ADD COLUMN risk_level TEXT DEFAULT 'Normal'")
         cursor.execute("ALTER TABLE journal_entries ADD COLUMN risk_score INTEGER DEFAULT 0")
         cursor.execute("ALTER TABLE journal_entries ADD COLUMN risk_level TEXT DEFAULT 'Normal'")
+    except sqlite3.OperationalError:
+        pass # Columns likely already exist
+        
+    try:
+        cursor = conn.cursor()
+        cursor.execute("ALTER TABLE journal_entries ADD COLUMN word_count INTEGER DEFAULT 0")
+        cursor.execute("ALTER TABLE journal_entries ADD COLUMN time_taken TEXT DEFAULT '0m 0s'")
         conn.commit()
     except sqlite3.OperationalError:
         pass # Columns likely already exist
@@ -156,9 +163,13 @@ def save_journal(data: dict) -> int:
     if isinstance(data.get("themes"), list):
         data = dict(data)
         data["themes"] = json.dumps(data["themes"])
+    data.setdefault("risk_score", 0)
+    data.setdefault("risk_level", "Normal")
+    data.setdefault("word_count", 0)
+    data.setdefault("time_taken", "0m 0s")
     cursor.execute("""
-        INSERT INTO journal_entries (date, content, sentiment, themes, ai_reflection, risk_score, risk_level)
-        VALUES (:date, :content, :sentiment, :themes, :ai_reflection, :risk_score, :risk_level)
+        INSERT INTO journal_entries (date, content, sentiment, themes, ai_reflection, risk_score, risk_level, word_count, time_taken)
+        VALUES (:date, :content, :sentiment, :themes, :ai_reflection, :risk_score, :risk_level, :word_count, :time_taken)
     """, data)
     row_id = cursor.lastrowid
     conn.commit()

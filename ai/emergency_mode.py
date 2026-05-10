@@ -27,9 +27,8 @@ def show_emergency_panel():
                 <h4 style="color: #b91c1c; margin:0 0 8px 0;">📞 Emergency Resources</h4>
                 <p style="margin:0; font-size: 0.95rem; color: #4b5563;">
                     If you are in immediate danger or feeling overwhelmed, please reach out to professional help:<br/>
-                    • <strong>National Emergency Number:</strong> 911 / 112 (or your local equivalent)<br/>
-                    • <strong>Crisis Text Line:</strong> Text HOME to 741741<br/>
-                    • <strong>Suicide & Crisis Lifeline:</strong> Call or text 988 (US/Canada)
+                    • <strong>Tele-MANAS Mental Health Helpline:</strong> 14416 or 1-800-891-4416 (24/7)<br/>
+                    • <strong>AASRA Suicide Prevention Helpline:</strong> +91 9820466726 (24/7)
                 </p>
             </div>
             

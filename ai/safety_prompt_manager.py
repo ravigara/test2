@@ -20,15 +20,15 @@ def get_safety_instruction(risk_level: str) -> str:
     elif risk_level == "Mild Concern":
         return base_rules + """
         Provide gentle emotional reassurance. The user is showing signs of mild stress or sadness.
-        Example approach: "It seems like you've been emotionally tired lately. Taking short breaks may help."
-        Acknowledge their feelings gently.
+        You MUST include a comforting message like "It's ok to pause" and recommend a small, calming activity (e.g. drinking water, taking a walk, deep breathing).
+        Acknowledge their feelings gently without dismissing them.
         """
         
     elif risk_level == "Moderate Concern":
         return base_rules + """
         The user is in distress. Respond carefully and gently. Avoid cheerful or toxic positivity.
-        Example approach: "I'm sorry you're going through a difficult time. You do not have to handle everything alone."
-        Suggest simple grounding techniques or breathing exercises if appropriate.
+        You MUST remind them that "It's ok to pause" and recommend a grounding activity or a gentle distraction to help solve the problem.
+        Suggest simple grounding techniques (like the 5-4-3-2-1 method) or a short breathing exercise.
         """
         
     elif risk_level == "High Risk":
