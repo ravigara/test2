@@ -13,7 +13,6 @@ streamlit-webrtc>=0.47.0
 joblib>=1.3.0
 SpeechRecognition==3.8.1
 tk==0.1.0
-textblob==0.15.3
 matplotlib==3.4.2
 absl-py==1.2.0
 apiclient==1.0.4
@@ -46,7 +45,6 @@ idna==2.10
 importlib-metadata==4.12.0
 itsdangerous==1.1.0
 Jinja2==2.11.2
-joblib==1.2.0
 keras==2.10.0
 Keras-Applications==1.0.8
 Keras-Preprocessing==1.1.2
@@ -58,13 +56,10 @@ matplotlib==3.5.3
 msgpack==1.0.4
 msgpack-numpy==0.4.8
 nltk==3.7
-numpy==1.19.5
 oauthlib==3.2.1
 opencv-contrib-python==3.4.2.17
 opt-einsum==3.3.0
 packaging==21.3
-pandas==1.1.5
-Pillow==9.2.0
 protobuf==3.13.0
 psutil==5.9.2
 pyasn1==0.4.8
@@ -91,11 +86,9 @@ SQLAlchemy==1.4.41
 sqlparse==0.4.1
 tabulate==0.8.10
 tensorboard==2.1.1
-tensorflow==2.1.0
 tensorflow-estimator==2.1.0
 tensorpack==0.11
 termcolor==2.0.1
-textblob==0.17.1
 threadpoolctl==3.1.0
 tqdm==4.64.1
 tweepy==4.10.1
