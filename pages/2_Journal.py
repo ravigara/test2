@@ -1,6 +1,6 @@
 """
 Page 2 — Daily Journal
-Free-form journaling with voice-to-text, AI reflection, and session metrics.
+Free-form journaling with AI reflection and session metrics.
 """
 
 import streamlit as st
@@ -11,7 +11,6 @@ from database.db import save_journal, get_journals, get_today_checkin, get_user_
 from components.ai_companion import analyze_journal
 from utils.constants import EMOTION_EMOJI
 from utils.helpers import format_date
-from utils.gemini_client import get_robust_client
 
 st.set_page_config(
     page_title="Journal | Mitra",
@@ -31,9 +30,6 @@ except FileNotFoundError:
 # ── Session Tracking ───────────────────────────────────────────────────────────
 if "journal_start_time" not in st.session_state:
     st.session_state.journal_start_time = time.time()
-
-if "journal_text_area" not in st.session_state:
-    st.session_state.journal_text_area = ""
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown("## 📝 Your Private Journal")
@@ -58,33 +54,12 @@ if today_checkin:
         unsafe_allow_html=True,
     )
 
-# ── Voice to Text ──────────────────────────────────────────────────────────────
-st.markdown("### 🎙️ Voice Journal")
-st.info("Record your thoughts out loud and Mitra will transcribe them into text.")
-audio_bytes = st.audio_input("Record Voice Message")
-
-if audio_bytes and st.button("Transcribe Audio to Text", type="secondary"):
-    with st.spinner("Transcribing your voice..."):
-        try:
-            client = get_robust_client()
-            contents = [
-                "You are an expert transcriber. Transcribe the following audio perfectly. Output ONLY the raw transcription text, no conversational filler.",
-                {"mime_type": "audio/wav", "data": audio_bytes.getvalue()}
-            ]
-            response = client.generate_content("gemini-1.5-flash", contents)
-            if response.text:
-                st.session_state.journal_text_area += (" " if st.session_state.journal_text_area else "") + response.text.strip()
-                st.success("Transcription complete!")
-        except Exception as e:
-            st.error(f"Failed to transcribe: {e}")
-
 # ── Journal Entry ──────────────────────────────────────────────────────────────
 st.markdown("### 📖 Write Your Entry")
 journal_text = st.text_area(
     "Share whatever is on your mind...",
-    placeholder="Start writing or use the Voice Journal above...",
+    placeholder="Start writing here... There's no right or wrong way to journal.",
     height=280,
-    key="journal_text_area",
 )
 
 # ── Session Metrics ────────────────────────────────────────────────────────────
@@ -189,7 +164,6 @@ if submitted and journal_text.strip():
     
     # Reset tracking
     st.session_state.journal_start_time = time.time()
-    st.session_state.journal_text_area = ""
     st.success("✅ Journal entry saved privately on your device.")
     st.rerun()
 
