@@ -173,7 +173,6 @@ if submitted and journal_text.strip():
     # Reset tracking
     st.session_state.journal_start_time = time.time()
     st.success("✅ Journal entry saved privately on your device.")
-    st.rerun()
 
 # ── Past Entries ───────────────────────────────────────────────────────────────
 st.markdown("---")
