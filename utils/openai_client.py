@@ -1,146 +1,195 @@
 """
-Robust OpenAI client with multi-key rotation, quota pre-validation, and retry logic.
-Handles: insufficient_quota, rate limits, auth errors, and network timeouts.
-The singleton is stored in Streamlit session_state so Streamlit doesn't reset it.
+Robust OpenAI client with multi-key round-robin rotation.
+
+Key design decisions:
+- Loads ALL available keys upfront (NO pre-validation — quota-exhausted keys
+  also fail the models.list() call, which incorrectly removes them).
+- Rotates to the next key only when a live API call fails with a retryable
+  error (quota exhaustion / rate limit / auth error).
+- Singleton stored in st.session_state so it persists across Streamlit reruns
+  but resets on new sessions (when the server restarts).
+- Marks exhausted keys per-session so we don't retry them again in the same session.
 """
+
 import os
 import logging
-import httpx
 from openai import OpenAI, RateLimitError, AuthenticationError, APIStatusError
 from dotenv import load_dotenv
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-_QUOTA_ERROR_CODES = {"insufficient_quota", "rate_limit_exceeded"}
-_KEY_NAMES = ["OPENAI_API_KEY", "OPENAI_API_KEY1", "OPENAI_API_KEY2", "OPENAI_API_KEY3", "OPENAI_API_KEY4"]
+# Names to scan in .env, in priority order
+_KEY_ENV_NAMES = [
+    "OPENAI_API_KEY",
+    "OPENAI_API_KEY1",
+    "OPENAI_API_KEY2",
+    "OPENAI_API_KEY3",
+    "OPENAI_API_KEY4",
+]
 
 
-def _load_keys() -> list[str]:
+def _load_all_keys() -> list[str]:
+    """Reads all keys from environment. Returns de-duplicated list."""
     keys = []
-    for name in _KEY_NAMES:
+    for name in _KEY_ENV_NAMES:
         val = os.environ.get(name, "").strip()
         if val and val not in keys:
             keys.append(val)
     return keys
 
 
-def _is_retryable(e: Exception) -> bool:
-    """Returns True if the error warrants switching to the next key."""
+def _is_quota_error(e: Exception) -> bool:
+    """Returns True for any error that should trigger a key switch."""
     if isinstance(e, (RateLimitError, AuthenticationError)):
         return True
     if isinstance(e, APIStatusError) and e.status_code in (429, 401, 403):
         return True
-    # Check error body text
-    err_str = str(e).lower()
-    if any(code in err_str for code in _QUOTA_ERROR_CODES):
-        return True
-    return False
-
-
-def validate_key(api_key: str) -> bool:
-    """
-    Fast lightweight check: tries a minimal API call to verify the key has quota.
-    Uses the models list endpoint (cheap, token-free).
-    """
-    try:
-        client = OpenAI(api_key=api_key, timeout=5.0)
-        # List models is extremely cheap and confirms auth + quota status
-        client.models.list()
-        return True
-    except Exception:
-        return False
+    err_lower = str(e).lower()
+    return any(kw in err_lower for kw in (
+        "insufficient_quota", "rate_limit_exceeded",
+        "exceeded your current quota", "invalid_api_key",
+    ))
 
 
 class RobustOpenAI:
+    """
+    Multi-key OpenAI client that automatically rotates through available keys
+    when any key hits its quota or rate limit.
+    """
+
     def __init__(self):
-        all_keys = _load_keys()
+        all_keys = _load_all_keys()
         if not all_keys:
-            raise EnvironmentError("No OPENAI_API_KEY found in environment variables.")
+            raise EnvironmentError(
+                "No OpenAI API keys found. Set OPENAI_API_KEY (and optionally "
+                "OPENAI_API_KEY1 … OPENAI_API_KEY4) in your .env file."
+            )
 
-        # Pre-validate all keys at startup, only keep working ones
-        self.keys = []
-        for key in all_keys:
-            if validate_key(key):
-                self.keys.append(key)
-                logger.info(f"[RobustOpenAI] Key ending ...{key[-6:]} is VALID")
-            else:
-                logger.warning(f"[RobustOpenAI] Key ending ...{key[-6:]} FAILED validation — skipping")
-
-        if not self.keys:
-            # Fall back to all keys if none pass validation (e.g., models endpoint blocked)
-            logger.warning("[RobustOpenAI] All keys failed pre-validation. Using all keys with runtime fallback.")
-            self.keys = all_keys
-
-        self.current_key_idx = 0
+        # All keys available — no pre-validation
+        self.keys: list[str] = all_keys
+        self.exhausted: set[int] = set()   # indices of keys that have failed this session
+        self.current_key_idx: int = 0
         self._build_client()
+
+        logger.info(f"[RobustOpenAI] Initialized with {len(self.keys)} key(s). "
+                    f"Starting with key #1 (ending …{self.keys[0][-6:]})")
+
+    # ── Internal helpers ───────────────────────────────────────────────────────
 
     def _build_client(self):
         self.client = OpenAI(api_key=self.keys[self.current_key_idx], timeout=30.0)
 
-    def _next_key(self) -> bool:
-        """Advance to next available key. Returns True if switched, False if exhausted."""
-        # Mark current as exhausted and try next
-        start_idx = self.current_key_idx
-        while self.current_key_idx < len(self.keys) - 1:
-            self.current_key_idx += 1
-            self._build_client()
-            logger.warning(f"[RobustOpenAI] Switched to key #{self.current_key_idx + 1} (ending ...{self.keys[self.current_key_idx][-6:]})")
-            return True
+    def _advance_to_next_key(self) -> bool:
+        """
+        Marks current key as exhausted and advances to the next non-exhausted key.
+        Returns True if a usable key was found, False if all are exhausted.
+        """
+        self.exhausted.add(self.current_key_idx)
+        for idx in range(len(self.keys)):
+            if idx not in self.exhausted:
+                self.current_key_idx = idx
+                self._build_client()
+                logger.warning(
+                    f"[RobustOpenAI] Switched to key #{idx + 1} "
+                    f"(ending …{self.keys[idx][-6:]})"
+                )
+                return True
+        logger.error("[RobustOpenAI] All API keys are exhausted for this session.")
         return False
 
-    def chat_completion(self, **kwargs) -> object:
-        """Non-streaming completion with full key rotation on any quota/auth error."""
+    # ── Public properties ──────────────────────────────────────────────────────
+
+    @property
+    def total_keys(self) -> int:
+        return len(self.keys)
+
+    @property
+    def active_key_number(self) -> int:
+        """1-indexed number of the currently active key."""
+        return self.current_key_idx + 1
+
+    @property
+    def remaining_keys(self) -> int:
+        return len(self.keys) - len(self.exhausted)
+
+    # ── API call methods ───────────────────────────────────────────────────────
+
+    def chat_completion(self, **kwargs):
+        """
+        Non-streaming chat completion.
+        Retries with successive keys on quota / rate-limit errors.
+        """
         last_exc = None
         for _ in range(len(self.keys)):
             try:
                 return self.client.chat.completions.create(**kwargs)
             except Exception as e:
                 last_exc = e
-                if _is_retryable(e):
-                    logger.warning(f"[RobustOpenAI] chat_completion error: {type(e).__name__}. Trying next key...")
-                    if self._next_key():
-                        continue
-                raise e
-        raise EnvironmentError(f"All {len(self.keys)} API keys exhausted. Last error: {last_exc}")
+                if _is_quota_error(e):
+                    logger.warning(
+                        f"[RobustOpenAI] chat_completion: {type(e).__name__} on "
+                        f"key #{self.current_key_idx + 1}. Trying next key…"
+                    )
+                    if self._advance_to_next_key():
+                        continue          # retry with new key
+                    else:
+                        break             # all keys exhausted
+                raise                     # non-quota error → propagate immediately
+
+        raise EnvironmentError(
+            f"All {len(self.keys)} OpenAI API keys are exhausted for this session. "
+            f"Last error: {last_exc}"
+        )
 
     def chat_stream(self, **kwargs):
         """
-        Streaming completion with full key rotation.
-        Collects all chunks eagerly per key attempt to surface errors early.
-        Yields text strings once a successful key is found.
+        Streaming chat completion.
+        Eagerly collects chunks per key attempt so quota errors are caught
+        before any text is yielded to the caller.
         """
-        kwargs.setdefault("stream", True)
+        kwargs["stream"] = True
         last_exc = None
 
-        for attempt_key_idx in range(len(self.keys)):
-            # Make sure we're on the right key
-            if self.current_key_idx != attempt_key_idx:
-                self.current_key_idx = attempt_key_idx
-                self._build_client()
+        for attempt in range(len(self.keys)):
             try:
                 response = self.client.chat.completions.create(**kwargs)
-                chunks = []
+                # Collect all chunks for this key; raises if key is quota-exhausted
+                chunks: list[str] = []
                 for chunk in response:
                     delta = chunk.choices[0].delta
                     if hasattr(delta, "content") and delta.content:
                         chunks.append(delta.content)
+                # Success — yield collected text
                 yield from chunks
-                return  # Success — done
+                return
+
             except Exception as e:
                 last_exc = e
-                if _is_retryable(e):
-                    logger.warning(f"[RobustOpenAI] chat_stream error on key #{attempt_key_idx + 1}: {type(e).__name__}. Trying next key...")
-                    continue
-                raise e
+                if _is_quota_error(e):
+                    logger.warning(
+                        f"[RobustOpenAI] chat_stream: {type(e).__name__} on "
+                        f"key #{self.current_key_idx + 1}. Trying next key…"
+                    )
+                    if self._advance_to_next_key():
+                        continue          # retry with new key
+                    else:
+                        break             # all keys exhausted
+                raise                     # non-quota error → propagate
 
-        raise EnvironmentError(f"All {len(self.keys)} API keys exhausted during streaming. Last error: {last_exc}")
+        raise EnvironmentError(
+            f"All {len(self.keys)} OpenAI API keys are exhausted during streaming. "
+            f"Last error: {last_exc}"
+        )
 
+
+# ── Singleton accessor ─────────────────────────────────────────────────────────
 
 def get_robust_client() -> RobustOpenAI:
     """
-    Returns a singleton RobustOpenAI stored in Streamlit session_state
-    so it survives re-runs but is re-created on fresh sessions.
+    Returns the session-scoped RobustOpenAI singleton from st.session_state.
+    This ensures the key rotation state persists across Streamlit reruns
+    but resets when the browser session ends.
     """
     import streamlit as st
     if "_robust_openai" not in st.session_state:

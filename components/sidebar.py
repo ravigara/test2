@@ -88,18 +88,21 @@ def render_sidebar():
                     st.success("✅ All data cleared.")
                     st.rerun()
 
+
         # ── API Key Status ─────────────────────────────────────────────────────
         st.divider()
         try:
             from utils.openai_client import get_robust_client
             c = get_robust_client()
-            total   = len(c.keys)
-            current = c.current_key_idx + 1
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.markdown(f'<div style="font-size:0.78rem;color:#475569;">🔑 API Keys</div>', unsafe_allow_html=True)
-            with col_b:
-                color = "#22c55e" if current < total else "#f59e0b"
-                st.markdown(f'<div style="font-size:0.78rem;color:{color};font-weight:700;">{current}/{total} active</div>', unsafe_allow_html=True)
+            total     = c.total_keys
+            current   = c.active_key_number
+            remaining = c.remaining_keys
+            color = "#22c55e" if remaining > 1 else "#f59e0b" if remaining == 1 else "#ef4444"
+            st.markdown(
+                f'<div style="font-size:0.78rem;color:#475569;margin-bottom:4px;">🔑 API Key Pool</div>'
+                f'<div style="font-size:0.82rem;color:{color};font-weight:700;">'
+                f'Key {current}/{total} active &nbsp;·&nbsp; {remaining} key(s) remaining</div>',
+                unsafe_allow_html=True
+            )
         except Exception:
             pass

@@ -123,12 +123,13 @@ if "chat_initialized" not in st.session_state:
 try:
     from utils.openai_client import get_robust_client
     client = get_robust_client()
-    num_keys = len(client.keys)
-    current_key_num = client.current_key_idx + 1
-    key_status_color = "#4CAF82" if num_keys > 1 else "#F5A623"
+    total     = client.total_keys
+    current   = client.active_key_number
+    remaining = client.remaining_keys
+    color = "#22c55e" if remaining > 1 else "#f59e0b" if remaining == 1 else "#ef4444"
     st.markdown(
-        f'<div style="text-align:right;font-size:0.75rem;color:{key_status_color};margin-bottom:12px;">'
-        f'🔑 API Key {current_key_num}/{num_keys} active</div>',
+        f'<div style="text-align:right;font-size:0.75rem;color:{color};margin-bottom:12px;">'
+        f'🔑 API Key {current}/{total} active &nbsp;&middot;&nbsp; {remaining} remaining</div>',
         unsafe_allow_html=True
     )
 except Exception:
