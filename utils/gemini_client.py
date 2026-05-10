@@ -23,6 +23,8 @@ _KEY_ENV_NAMES = [
     "GEMINI_API_KEY2",
     "GEMINI_API_KEY3",
     "GEMINI_API_KEY4",
+    "GEMINI_API_KEY5",
+    "GEMINI_API_KEY6",
 ]
 
 
