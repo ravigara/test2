@@ -186,8 +186,8 @@ st.markdown("""
 # ── Dynamic AI Quote Helper ────────────────────────────────────────────────────
 @st.cache_data(ttl=3600) # Cache for 1 hour to prevent API spam but keep it fresh
 def get_daily_quote():
-    client = get_robust_client()
     try:
+        client = get_robust_client()
         response = client.models.generate_content(
             model='gemini-1.5-flash',
             contents="Generate a short, inspiring, and comforting single-sentence quote about mental health, mindfulness, or taking things one step at a time. It should be totally unique. Do not use quotes by famous people. Just give the quote text.",

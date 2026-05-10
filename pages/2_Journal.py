@@ -100,7 +100,15 @@ if submitted and journal_text.strip():
         st.stop()
 
     with st.spinner("Mitra is reading your entry..."):
-        analysis = analyze_journal(journal_text, today_mood)
+        try:
+            analysis = analyze_journal(journal_text, today_mood)
+        except Exception:
+            analysis = {
+                "sentiment": "neutral",
+                "themes": [],
+                "reflection": "I couldn't generate a reflection right now — all API keys are at their limit. Your entry has still been saved safely. 💙"
+            }
+            st.warning("⚠️ AI reflection unavailable — API quota reached. Your journal is still saved.")
 
     sentiment = analysis.get("sentiment", "neutral")
     themes = analysis.get("themes", [])
